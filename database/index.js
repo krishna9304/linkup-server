@@ -1,7 +1,7 @@
 let mongoose = require("mongoose");
 
 mongoose.connect(
-  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fo7rn.mongodb.net/linkup?retryWrites=true&w=majority`,
+  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@mycluster.sxsst.mongodb.net/linkup?retryWrites=true&w=majority`,
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -11,7 +11,7 @@ mongoose.connect(
 let db = mongoose.connection;
 
 db.on("open", () => {
-  console.log("Conncected to the database successfully");
+  console.log("Connected to the database successfully");
 });
 
 db.once("error", () => {
