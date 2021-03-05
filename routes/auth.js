@@ -3,89 +3,80 @@ let jwt = require("jsonwebtoken");
 let bcrypt = require("bcrypt");
 let User = require("../database/models/user");
 var nodemailer = require("nodemailer");
-let otpGenerator = require("otp-generator");
-
-let transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "idk0user@gmail.com",
-    pass: "IdkPassword",
-  },
-});
-
-var mailOptions = {
-  from: "idk0user@gmail.com",
-  to: "mrcircuit1234@gmail.com",
-  subject: "Sending Email using Node.js",
-  text: "That was easy!",
-};
-
-// transporter.sendMail(mailOptions, function (error, info) {
-//   if (error) {
-//     console.log(error);
-//   } else {
-//     console.log("Email sent: " + info.response);
-//   }
-// });
 
 router.post("/signup", (req, res, next) => {
-  let otp = otpGenerator.generate(6, {
-    digits: true,
-    alphabets: false,
-    specialChars: false,
-    upperCase: false,
-  });
   let data = req.body;
   console.log(data);
-  User.exists(
-    {
-      email: data.email,
-    },
-    (err, result) => {
-      if (err) {
-        next(err);
-      }
-      if (result === false) {
-        bcrypt.hash(data.password, 10, (err, encPass) => {
-          if (err) {
-            next(err);
-          }
-          data.password = encPass;
-          let user = new User(data);
-          user
-            .save()
-            .then((doc) => {
-              let token = jwt.sign(
-                {
-                  firstName: doc.firstName,
-                  lastName: doc.lastName,
-                  email: doc.email,
-                },
-                process.env.JWT_PASS,
-                { expiresIn: "24h" }
-              );
-              res.cookie("jwt", token);
-              res.send({
-                userdata: doc,
-                res: true,
-                msg: "User registered succesfully!",
-              });
-            })
-            .catch((err) => {
-              next(err);
+
+  User.exists({ email: data.email }, (err, result) => {
+    if (err) next(err);
+    if (result === false) {
+      //passoword hashing and salting
+      bcrypt.hash(data.password, 10, (err, enc_pass) => {
+        if (err) next(err);
+
+        data.password = enc_pass;
+
+        //saveing the data to the database
+        let user = new User(data);
+        user
+          .save()
+          .then((doc) => {
+            //generating the token
+            let token = jwt.sign(
+              { name: doc.name, email: doc.email },
+              process.env.JWT_PASS,
+              {
+                expiresIn: "2h",
+              }
+            );
+            let transporter = nodemailer.createTransport({
+              host: "smtp.gmail.com",
+              port: 465,
+              secure: true,
+              auth: {
+                user: process.env.OTP_MAILER_ID,
+                pass: process.env.OTP_MAILER_PASS,
+              },
             });
-        });
-      } else {
-        res.send({
-          res: false,
-          msg: "User with the given email already exists.",
-        });
-      }
+
+            var mailOptions = {
+              from: process.env.OTP_MAILER_ID,
+              to: data.email,
+              subject: "Welcome to Linkup",
+              text: `http://127.0.0.1/verify/${token}`,
+            };
+
+            transporter.sendMail(mailOptions, function (error, info) {
+              if (error) {
+                console.log(error);
+              } else {
+                console.log("Email sent: " + info.response);
+              }
+            });
+            res.cookie("jwt", token);
+            res.send({
+              userdata: doc,
+              res: true,
+              msg: "User registerd successfully but not verified",
+            });
+          })
+          .catch((err) => {
+            next(err);
+          });
+      });
+    } else {
+      res.send({
+        res: false,
+        msg: "User with the give email already registered",
+      });
     }
-  );
+  });
 });
+
+/**
+ * this i the login route [remember that the request type should be post]
+ */
 
 router.post("/login", (req, res) => {
   let { email, password } = req.body;
@@ -106,14 +97,10 @@ router.post("/login", (req, res) => {
             if (same) {
               //successful login
               let token = jwt.sign(
-                {
-                  firstName: doc.firstName,
-                  lastName: doc.lastName,
-                  email: doc.email,
-                },
+                { name: doc.name, email: doc.email },
                 process.env.JWT_PASS,
                 {
-                  expiresIn: "24h",
+                  expiresIn: "2h",
                 }
               );
               res.cookie("jwt", token);
@@ -143,6 +130,20 @@ router.post("/login", (req, res) => {
   });
 });
 
+router.post("/verify/:token", (req, res, next) => {
+  let { token } = req.params;
+  jwt.verify(token, process.env.JWT_PASS, (err, decoded) => {
+    if (err) next(err);
+    User.findOne({ email: decoded.email }, (err, doc) => {
+      if (err) next(err);
+      res.send({
+        result: true,
+        msg: "You have been verified!!",
+      });
+    });
+  });
+});
+
 router.post("/verifyToken", (req, res) => {
   let token = req.body.token;
   jwt.verify(token, process.env.JWT_PASS, (err, decoded) => {
@@ -168,5 +169,4 @@ router.post("/verifyToken", (req, res) => {
     });
   });
 });
-
 module.exports = router;

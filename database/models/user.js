@@ -29,6 +29,10 @@ let User = mongoose.Schema({
     required: false,
   },
   img: String,
+  verified: {
+    type: Boolean,
+    required: true,
+  },
 });
 
 module.exports = mongoose.model("user", User);
