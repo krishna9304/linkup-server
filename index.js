@@ -7,6 +7,8 @@ let routes = require("./routes");
 let cors = require("cors");
 let app = express();
 
+let chalk = require("chalk");
+
 //constants
 const PORT = process.env.PORT || 8080;
 const isDev = process.env.NODE_ENV !== "production";
@@ -35,8 +37,10 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.clear();
   console.log(
-    `Server started succesfully on PORT ${PORT} at ${Date()} as ${
-      isDev ? "Development" : "Production"
-    }`
+    chalk.cyanBright(
+      `Server started succesfully on PORT ${PORT} at ${Date()} as ${
+        isDev ? "Development" : "Production"
+      }`
+    )
   );
 });

@@ -3,6 +3,7 @@ let jwt = require("jsonwebtoken");
 let bcrypt = require("bcrypt");
 let User = require("../database/models/user");
 var nodemailer = require("nodemailer");
+let chalk = require("chalk");
 
 router.post("/signup", (req, res, next) => {
   let data = req.body;
@@ -33,18 +34,20 @@ router.post("/signup", (req, res, next) => {
               }
             );
 
+            // console.log(chalk.red(token));
+
             let transporter = nodemailer.createTransport({
               host: "smtp.gmail.com",
               port: 465,
               secure: true,
               auth: {
-                user: process.env.OTP_MAILER_ID,
-                pass: process.env.OTP_MAILER_PASS,
+                user: process.env.MAILER_ID,
+                pass: process.env.MAILER_PASS,
               },
             });
 
             var mailOptions = {
-              from: process.env.OTP_MAILER_ID,
+              from: process.env.MAILER_ID,
               to: data.email,
               subject: "Welcome to Linkup",
               text: `Your Link to Verify: http://127.0.0.1:8080/api/v1/auth/verify/${token}`,
