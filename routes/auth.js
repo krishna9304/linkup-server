@@ -16,20 +16,23 @@ router.post("/signup", (req, res, next) => {
         if (err) next(err);
 
         data.password = enc_pass;
+        data.verified = false;
 
-        //saveing the data to the database
+        //saving the data to the database
         let user = new User(data);
         user
           .save()
           .then((doc) => {
             //generating the token
+            console.log("ID : ", doc._id);
             let token = jwt.sign(
-              { name: doc.name, email: doc.email },
+              { id: doc._id, email: doc.email },
               process.env.JWT_PASS,
               {
-                expiresIn: "2h",
+                expiresIn: "24h",
               }
             );
+
             let transporter = nodemailer.createTransport({
               host: "smtp.gmail.com",
               port: 465,
@@ -44,7 +47,7 @@ router.post("/signup", (req, res, next) => {
               from: process.env.OTP_MAILER_ID,
               to: data.email,
               subject: "Welcome to Linkup",
-              text: `http://127.0.0.1/verify/${token}`,
+              text: `Your Link to Verify: http://127.0.0.1:8080/api/v1/auth/verify/${token}`,
             };
 
             transporter.sendMail(mailOptions, function (error, info) {
@@ -75,7 +78,7 @@ router.post("/signup", (req, res, next) => {
 });
 
 /**
- * this i the login route [remember that the request type should be post]
+ * this is the login route [remember that the request type should be post]
  */
 
 router.post("/login", (req, res) => {
@@ -88,7 +91,7 @@ router.post("/login", (req, res) => {
 
     if (result) {
       //getting the user data from the database
-      User.findOne({ email })
+      User.find({ email })
         .then((doc) => {
           //now we will check the password
           let hash = doc.password;
@@ -97,7 +100,7 @@ router.post("/login", (req, res) => {
             if (same) {
               //successful login
               let token = jwt.sign(
-                { name: doc.name, email: doc.email },
+                { name: doc.name, email: doc.email, id: doc._id },
                 process.env.JWT_PASS,
                 {
                   expiresIn: "2h",
@@ -130,16 +133,22 @@ router.post("/login", (req, res) => {
   });
 });
 
-router.post("/verify/:token", (req, res, next) => {
+router.get("/verify/:token", (req, res, next) => {
   let { token } = req.params;
+  console.log("Trying to Update");
   jwt.verify(token, process.env.JWT_PASS, (err, decoded) => {
     if (err) next(err);
-    User.findOne({ email: decoded.email }, (err, doc) => {
+    console.log(decoded.id);
+    User.findById(decoded.id, (err, user) => {
       if (err) next(err);
-      res.send({
-        result: true,
-        msg: "You have been verified!!",
-      });
+      user.verified = true;
+      // console.log(user);
+      user.save();
+    });
+    // User.findOneAndUpdate({ email: decoded.email }, { verified: true });
+    res.send({
+      result: true,
+      msg: "You have been Verified successfully",
     });
   });
 });
