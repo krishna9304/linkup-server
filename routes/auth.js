@@ -7,33 +7,32 @@ let chalk = require("chalk");
 
 router.post("/signup", (req, res, next) => {
   let data = req.body;
-  console.log(data);
-
   User.exists({ email: data.email }, (err, result) => {
     if (err) next(err);
     if (result === false) {
       //passoword hashing and salting
       bcrypt.hash(data.password, 10, (err, enc_pass) => {
         if (err) next(err);
-
+        
         data.password = enc_pass;
         data.verified = false;
-
+        
+        console.log(data);
         //saving the data to the database
         let user = new User(data);
         user
           .save()
           .then((doc) => {
             //generating the token
-            console.log("ID : ", doc._id);
+            // console.log("ID : ", doc._id);
             let token = jwt.sign(
               { id: doc._id, email: doc.email },
               process.env.JWT_PASS,
               {
                 expiresIn: "24h",
               }
-            );
-
+              );
+              
             // console.log(chalk.red(token));
 
             let transporter = nodemailer.createTransport({
@@ -64,6 +63,7 @@ router.post("/signup", (req, res, next) => {
             res.send({
               userdata: doc,
               res: true,
+              userData : data,
               msg: "User registerd successfully but not verified",
             });
           })
